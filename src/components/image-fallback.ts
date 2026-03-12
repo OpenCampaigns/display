@@ -8,7 +8,7 @@ import { resolveAssetUri, validateMediaConstraints } from '@opencampaigns/sdk';
  */
 @customElement('image-fallback')
 export class ImageFallback extends LitElement {
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
       position: relative;
@@ -38,7 +38,7 @@ export class ImageFallback extends LitElement {
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
       opacity: 0;
       transition: opacity 0.3s ease-in-out;
     }
@@ -48,65 +48,65 @@ export class ImageFallback extends LitElement {
     }
   `;
 
-    @property({ type: String }) src?: string;
-    @property({ type: String }) fallbackSrc?: string;
-    @property({ type: String }) alt: string = 'Campaign Image';
+  @property({ type: String }) src?: string;
+  @property({ type: String }) fallbackSrc?: string;
+  @property({ type: String }) alt: string = 'Campaign Image';
 
-    @state() private _currentSrc?: string;
-    @state() private _loaded = false;
-    @state() private _error = false;
+  @state() private _currentSrc?: string;
+  @state() private _loaded = false;
+  @state() private _error = false;
 
-    connectedCallback() {
-        super.connectedCallback();
-        this._initImageLoad();
+  connectedCallback() {
+    super.connectedCallback();
+    this._initImageLoad();
+  }
+
+  private async _initImageLoad() {
+    this._loaded = false;
+    this._error = false;
+
+    // Priority 1: Try the primary source first (IPFS CID or Main URL)
+    if (this.src) {
+      const resolvedIpfsUrl = resolveAssetUri(this.src);
+      const isValid = await this._tryLoad(resolvedIpfsUrl);
+      if (isValid) return;
     }
 
-    private async _initImageLoad() {
-        this._loaded = false;
-        this._error = false;
-
-        // Priority 1: Try the fallback HTTPS link first (faster, CDN)
-        if (this.fallbackSrc) {
-            const isValid = await this._tryLoad(this.fallbackSrc);
-            if (isValid) return;
-        }
-
-        // Priority 2: If fallback fails or isn't provided, try the primary IPFS CID
-        if (this.src) {
-            const resolvedIpfsUrl = resolveAssetUri(this.src);
-            const isValid = await this._tryLoad(resolvedIpfsUrl);
-            if (isValid) return;
-        }
-
-        // If both fail
-        this._error = true;
+    // Priority 2: If primary fails, try the fallback CDN/HTTPS link
+    if (this.fallbackSrc) {
+      const isValid = await this._tryLoad(this.fallbackSrc);
+      if (isValid) return;
     }
 
-    private _tryLoad(url: string): Promise<boolean> {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                this._currentSrc = url;
-                this._loaded = true;
-                resolve(true);
-            };
-            img.onerror = () => {
-                resolve(false);
-            };
-            img.src = url;
-        });
-    }
+    // If both fail
+    this._error = true;
+  }
 
-    render() {
-        if (this._error) {
-            return html`
+  private _tryLoad(url: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        this._currentSrc = url;
+        this._loaded = true;
+        resolve(true);
+      };
+      img.onerror = () => {
+        resolve(false);
+      };
+      img.src = url;
+    });
+  }
+
+  render() {
+    if (this._error) {
+      return html`
         <div class="error-container" style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">
           <span>Image unavailable</span>
         </div>
       `;
-        }
+    }
 
-        return html`
+    return html`
       ${!this._loaded ? html`<div class="shimmer"></div>` : ''}
       ${this._currentSrc ? html`
         <img 
@@ -117,11 +117,11 @@ export class ImageFallback extends LitElement {
         />
       ` : ''}
     `;
-    }
+  }
 }
 
 declare global {
-    interface HTMLElementTagNameMap {
-        'image-fallback': ImageFallback;
-    }
+  interface HTMLElementTagNameMap {
+    'image-fallback': ImageFallback;
+  }
 }
